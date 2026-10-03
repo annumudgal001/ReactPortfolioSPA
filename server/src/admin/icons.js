@@ -1,0 +1,1 @@
+export const APP_SERVICE_ICONS = ['faSolidLaptopCode', 'faSolidRocket', 'faSolidPalette', 'faSolidServer', 'faSolidDatabase', 'faSolidRobot', 'faSolidBolt', 'faSolidBug', 'faSolidCloud', 'faSolidUsers', 'faSolidGears', 'faSolidCode'];

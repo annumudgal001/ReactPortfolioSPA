@@ -1,0 +1,91 @@
+<div class="admin">
+  @if (booting()) {
+    <p class="status">Checking your session…</p>
+  } @else if (!api.session()) {
+    <section class="admin-login card">
+      <p class="eyebrow">Owner access</p>
+      <h1>Portfolio studio</h1>
+      <p class="muted">Manage the content visitors see on your portfolio.</p>
+      <form (ngSubmit)="login()">
+        <div class="field"><label for="owner-email">Email</label><input id="owner-email" type="email" name="email" [(ngModel)]="email" autocomplete="username" required /></div>
+        <div class="field"><label for="owner-password">Password</label><input id="owner-password" type="password" name="password" [(ngModel)]="password" autocomplete="current-password" required /></div>
+        <button class="btn btn--primary" [disabled]="busy()" type="submit">{{ busy() ? 'Signing in…' : 'Sign in' }}</button>
+      </form>
+      @if (error()) { <p class="status status--error" role="alert">{{ error() }}</p> }
+      <p class="muted small">First setup: run <code>npm run admin:create</code> in the project terminal. There is no public registration.</p>
+      <a routerLink="/">Back to portfolio</a>
+    </section>
+  } @else {
+    <header class="admin-header">
+      <div><p class="eyebrow">Portfolio studio</p><h1>{{ heading() }}</h1><p class="muted small">{{ api.session()?.email }}</p></div>
+      <div class="actions"><a class="btn" routerLink="/">View portfolio</a><button class="btn" (click)="logout()" [disabled]="busy()">Sign out</button></div>
+    </header>
+    <nav class="admin-nav" aria-label="Content sections">
+      @for (section of sections; track section.key) {
+        <button class="btn" [class.selected]="active() === section.key" [attr.aria-current]="active() === section.key ? 'page' : null" [disabled]="busy()" (click)="select(section.key)">{{ section.label }}</button>
+      }
+    </nav>
+    @if (error()) { <div class="status status--error" role="alert">{{ error() }}@for (detail of errors(); track $index) { <p>{{ detail }}</p> }</div> }
+    @if (message()) { <p class="status status--ok" role="status">{{ message() }}</p> }
+    @if (busy()) { <p class="status" role="status">Working…</p> }
+    @if (active() === 'projects') {
+      <div class="admin-toolbar"><button class="btn btn--primary" (click)="editProject()" [disabled]="busy()">Add project</button><button class="btn" (click)="load()" [disabled]="busy()">Reload</button></div>
+      @if (projectDraft; as project) {
+        <section class="card admin-editor"><h2>{{ editing ? 'Edit project' : 'New project' }}</h2>
+          <fieldset [disabled]="busy()"><app-field-editor [fields]="fields['projects']" [value]="project" prefix="project" (changed)="dirty.set(true)" /></fieldset>
+          <div class="actions"><button class="btn" (click)="generateSlug()" [disabled]="busy()">Generate slug from title</button><button class="btn btn--primary" (click)="saveProject()" [disabled]="busy()">Save project</button></div>
+          <p class="muted small">Uncheck “Visible publicly” to keep this project private. Changing its slug changes its public URL.</p>
+        </section>
+      }
+      <div class="admin-records">
+        @for (project of projects(); track project._id) {
+          <article class="card admin-row"><div><h3>{{ project.title }}</h3><p class="muted">/{{ project.slug }} · {{ project.published ? 'Public' : 'Draft' }} · Order {{ project.order }}</p></div><div class="actions"><button class="btn" (click)="editProject(project)" [disabled]="busy()">Edit</button><button class="btn admin-danger" (click)="deleteProject(project)" [disabled]="busy()">Delete</button></div></article>
+        } @empty { <p class="status">No projects yet. Add your first project.</p> }
+      </div>
+    } @else if (active() === 'messages' || active() === 'feedback') {
+      <p class="muted">Submissions are private. Review approval does not publish a testimonial; add approved wording in Testimonials separately.</p>
+      @for (item of inbox().items; track item._id) {
+        <article class="card admin-submission"><h3>{{ item.name }}</h3><p class="muted">{{ item.createdAt }} @if (item.email) { · {{ item.email }} } @if (item.rating) { · {{ item.rating }}/5 }</p><p class="admin-text">{{ item.message }}</p>
+          <div class="actions"><button class="btn" (click)="flag(item)" [disabled]="busy()">{{ active() === 'messages' ? (item.read ? 'Mark unread' : 'Mark read') : (item.approved ? 'Unapprove' : 'Approve') }}</button><button class="btn admin-danger" (click)="deleteInbox(item)" [disabled]="busy()">Delete submission</button></div>
+        </article>
+      } @empty { @if (!busy()) { <p class="status">No submissions on this page.</p> } }
+      <div class="actions"><button class="btn" (click)="loadInbox(inbox().page - 1)" [disabled]="busy() || inbox().page === 1">Previous</button><span>Page {{ inbox().page }} · {{ inbox().total }} submissions</span><button class="btn" (click)="loadInbox(inbox().page + 1)" [disabled]="busy() || inbox().page * 20 >= inbox().total">Next</button></div>
+    } @else if (draft; as d) {
+      <div class="admin-toolbar"><button class="btn btn--primary" (click)="save()" [disabled]="busy() || !dirty()">Save changes</button><button class="btn" (click)="load()" [disabled]="busy()">Reload / discard</button><span class="muted">{{ dirty() ? 'Unsaved changes' : 'Up to date' }}</span></div>
+      <p class="muted small">Save publishes these content changes immediately. File fields accept an existing /path or HTTPS URL.</p>
+      <fieldset [disabled]="busy()">
+        @if (active() === 'profile') {
+          <section class="card admin-editor"><app-field-editor [fields]="fields['profile']" [value]="d" prefix="profile" (changed)="dirty.set(true)" /><h2>Social links</h2>
+            @for (social of ['github', 'linkedin', 'leetcode', 'twitter', 'instagram']; track social) {
+              <div class="field"><label [for]="'social-' + social">{{ social }}</label><input [id]="'social-' + social" type="url" [(ngModel)]="d['socials'][social]" (ngModelChange)="dirty.set(true)" /></div>
+            }
+          </section>
+        } @else if (active() === 'jargon') {
+          <section class="card"><p class="muted">Short phrases rotate in the hero. Remove all phrases to hide the ticker.</p>
+            @for (phrase of d['jargon']; track $index; let i = $index) {
+              <div class="field"><label [for]="'phrase-' + i">Phrase {{ i + 1 }}</label><input [id]="'phrase-' + i" [(ngModel)]="d['jargon'][i]" (ngModelChange)="dirty.set(true)" /><button class="btn" (click)="remove(i)">Remove phrase</button></div>
+            }
+            <button class="btn" (click)="addPhrase()">Add phrase</button>
+          </section>
+        } @else {
+          <button class="btn" (click)="add()">Add entry</button>
+          <div class="admin-records">
+            @for (record of records(); track record['id']; let i = $index) {
+              <section class="card admin-editor">
+                <div class="admin-row"><h2>Entry {{ i + 1 }}</h2><div class="actions"><button class="btn" (click)="move(i, -1)" [disabled]="i === 0" aria-label="Move entry up">↑</button><button class="btn" (click)="move(i, 1)" [disabled]="i === records().length - 1" aria-label="Move entry down">↓</button><button class="btn admin-danger" (click)="remove(i)">Remove entry</button></div></div>
+                <app-field-editor [fields]="fields[active()]" [value]="record" [prefix]="record['id']" (changed)="dirty.set(true)" />
+                @if (active() === 'skillGroups') {
+                  <h3>Skills in this category</h3>
+                  @for (skill of record['items']; track skill.id; let j = $index) {
+                    <div class="admin-skill"><div class="field"><label [for]="skill.id + '-name'">Skill name</label><input [id]="skill.id + '-name'" [(ngModel)]="skill.name" (ngModelChange)="dirty.set(true)" /></div><div class="field"><label [for]="skill.id + '-description'">Description</label><input [id]="skill.id + '-description'" [(ngModel)]="skill.description" (ngModelChange)="dirty.set(true)" /></div><button class="btn" (click)="removeSkill(record, j)">Remove skill</button></div>
+                  }
+                  <button class="btn" (click)="addSkill(record)">Add skill</button>
+                }
+              </section>
+            } @empty { <p class="status">No entries. Add one to get started.</p> }
+          </div>
+        }
+      </fieldset>
+    }
+  }
+</div>

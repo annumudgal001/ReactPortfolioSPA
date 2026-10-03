@@ -1,0 +1,30 @@
+{
+  "name": "portfolio",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm --prefix server test && npm --prefix client test -- --watch=false",
+    "dev": "concurrently -k -n API,WEB \"npm --prefix server run dev\" \"npm --prefix client start\"",
+    "seed": "npm --prefix server run seed",
+    "build": "npm --prefix client run build",
+    "migrate": "npm --prefix server run migrate",
+    "admin:create": "npm --prefix server run admin:create"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/annumudgal001/ReactPortfolioSPA.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/annumudgal001/ReactPortfolioSPA/issues"
+  },
+  "homepage": "https://github.com/annumudgal001/ReactPortfolioSPA#readme",
+  "private": true,
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}
